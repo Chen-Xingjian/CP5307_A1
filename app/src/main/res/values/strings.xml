@@ -1,3 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">CP3406_CP5307 Utility App Starter Template</string>
+    <string name="app_name">FitTrack+</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_record">Record</string>
+    <string name="nav_history">History</string>
+    <string name="nav_schedule">Schedule</string>
+    <string name="nav_profile">Profile</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Home -->
+    <string name="home_title">FitTrack+</string>
+    <string name="home_welcome">Welcome back!</string>
+    <string name="home_empty_state">No recent record. Start a workout now.</string>
+    <string name="home_quick_start">Quick Start</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_placeholder">Settings page placeholder (Week 1)</string>
 </resources>

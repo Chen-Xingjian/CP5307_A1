@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.CP3406_CP5603UtilityAppStarterTemplate" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.FitTrackPlus" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/fit_primary</item>
+        <item name="colorOnPrimary">@color/fit_on_primary</item>
+        <item name="colorSecondary">@color/fit_secondary</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+    </style>
 </resources>
