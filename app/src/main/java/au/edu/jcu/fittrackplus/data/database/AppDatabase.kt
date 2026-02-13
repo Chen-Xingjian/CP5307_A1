@@ -1,18 +1,18 @@
-package au.edu.jcu.fittrackplus.data.local
+package au.edu.jcu.fittrackplus.data.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
-import au.edu.jcu.fittrackplus.data.local.dao.AppointmentDao
-import au.edu.jcu.fittrackplus.data.local.dao.RecordDao
-import au.edu.jcu.fittrackplus.data.local.dao.UserDao
-import au.edu.jcu.fittrackplus.data.local.entity.AppointmentEntity
-import au.edu.jcu.fittrackplus.data.local.entity.UserEntity
-import au.edu.jcu.fittrackplus.data.local.entity.WorkoutRecordEntity
+import au.edu.jcu.fittrackplus.data.dao.AppointmentDao
+import au.edu.jcu.fittrackplus.data.dao.RecordDao
+import au.edu.jcu.fittrackplus.data.dao.UserDao
+import au.edu.jcu.fittrackplus.data.entity.AppointmentEntity
+import au.edu.jcu.fittrackplus.data.entity.UserEntity
+import au.edu.jcu.fittrackplus.data.entity.WorkoutRecordEntity
 
 @Database(
     entities = [UserEntity::class, WorkoutRecordEntity::class, AppointmentEntity::class],
     version = 1,
-    exportSchema = true
+    exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao

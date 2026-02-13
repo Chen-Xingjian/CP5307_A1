@@ -1,4 +1,4 @@
-package au.edu.jcu.fittrackplus.data.local.entity
+package au.edu.jcu.fittrackplus.data.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -6,9 +6,10 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "workout_records")
 data class WorkoutRecordEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0L,
-    val exerciseType: String,
+    val workoutType: String,
+    val startTimeMillis: Long,
+    val endTimeMillis: Long,
     val durationMinutes: Int,
-    val calories: Int,
-    val timestamp: Long,
-    val note: String = ""
+    val calories: Double,
+    val note: String
 )

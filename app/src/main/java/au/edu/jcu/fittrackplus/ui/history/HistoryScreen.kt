@@ -1,22 +1,29 @@
 package au.edu.jcu.fittrackplus.ui.history
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
-fun HistoryScreen(onBack: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("History Screen (Week 3)")
-        Button(onClick = onBack) { Text("Back") }
+fun HistoryContent(
+    viewModel: HistoryViewModel = hiltViewModel()
+) {
+    val ui by viewModel.ui.collectAsStateWithLifecycle()
+
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(ui.filteredRecords) { r ->
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp)) {
+                    Text("${r.workoutType.displayName} • ${r.durationMinutes} min • ${r.calories} kcal")
+                    if (r.note.isNotBlank()) Text("Note: ${r.note}")
+                }
+            }
+        }
     }
 }

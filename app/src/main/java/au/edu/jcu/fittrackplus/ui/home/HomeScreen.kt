@@ -1,32 +1,48 @@
 package au.edu.jcu.fittrackplus.ui.home
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import au.edu.jcu.fittrackplus.ui.history.HistoryContent
+import au.edu.jcu.fittrackplus.ui.record.RecordContent
+import au.edu.jcu.fittrackplus.ui.schedule.ScheduleContent
+
+private enum class HomeTab(val label: String) {
+    RECORD("Record"),
+    SCHEDULE("Schedule"),
+    HISTORY("History")
+}
 
 @Composable
-fun HomeScreen(
-    onClickQuickStart: () -> Unit,
-    onClickHistory: () -> Unit,
-    onClickSchedule: () -> Unit
-) {
+fun HomeScreen() {
+    var selectedTab by remember { mutableStateOf(HomeTab.RECORD) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(16.dp)
     ) {
-        Text("Welcome to FitTrack+")
-        Button(onClick = onClickQuickStart) { Text("Quick Start Workout") }
-        Button(onClick = onClickHistory) { Text("View History") }
-        Button(onClick = onClickSchedule) { Text("Schedule Workout") }
+        Text("Home", style = MaterialTheme.typography.headlineSmall)
+        Spacer(modifier = Modifier.height(12.dp))
+
+        TabRow(selectedTabIndex = selectedTab.ordinal) {
+            HomeTab.entries.forEach { tab ->
+                Tab(
+                    selected = selectedTab == tab,
+                    onClick = { selectedTab = tab },
+                    text = { Text(tab.label) }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        when (selectedTab) {
+            HomeTab.RECORD -> RecordContent()
+            HomeTab.SCHEDULE -> ScheduleContent()
+            HomeTab.HISTORY -> HistoryContent()
+        }
     }
 }

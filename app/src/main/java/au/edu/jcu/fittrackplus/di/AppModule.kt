@@ -2,12 +2,13 @@ package au.edu.jcu.fittrackplus.di
 
 import android.content.Context
 import androidx.room.Room
-import au.edu.jcu.fittrackplus.data.local.AppDatabase
-import au.edu.jcu.fittrackplus.data.local.dao.AppointmentDao
-import au.edu.jcu.fittrackplus.data.local.dao.RecordDao
-import au.edu.jcu.fittrackplus.data.local.dao.UserDao
+import au.edu.jcu.fittrackplus.data.dao.AppointmentDao
+import au.edu.jcu.fittrackplus.data.dao.RecordDao
+import au.edu.jcu.fittrackplus.data.dao.UserDao
+import au.edu.jcu.fittrackplus.data.database.AppDatabase
 import au.edu.jcu.fittrackplus.data.repository.FitTrackRepositoryImpl
 import au.edu.jcu.fittrackplus.domain.repository.FitTrackRepository
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -17,24 +18,23 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object AppModule {
+abstract class RepositoryModule {
+    @Binds
+    @Singleton
+    abstract fun bindRepository(impl: FitTrackRepositoryImpl): FitTrackRepository
+}
 
+@Module
+@InstallIn(SingletonComponent::class)
+object DatabaseModule {
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
-        // 第1周可用 inMemory，后续改持久化
-        return Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
-    }
+    fun provideDb(@ApplicationContext context: Context): AppDatabase =
+        Room.databaseBuilder(context, AppDatabase::class.java, "fittrackplus.db")
+            .fallbackToDestructiveMigration()
+            .build()
 
     @Provides fun provideUserDao(db: AppDatabase): UserDao = db.userDao()
     @Provides fun provideRecordDao(db: AppDatabase): RecordDao = db.recordDao()
     @Provides fun provideAppointmentDao(db: AppDatabase): AppointmentDao = db.appointmentDao()
-
-    @Provides
-    @Singleton
-    fun provideRepository(
-        userDao: UserDao,
-        recordDao: RecordDao,
-        appointmentDao: AppointmentDao
-    ): FitTrackRepository = FitTrackRepositoryImpl(userDao, recordDao, appointmentDao)
 }

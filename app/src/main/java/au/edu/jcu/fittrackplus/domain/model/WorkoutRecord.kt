@@ -2,9 +2,10 @@ package au.edu.jcu.fittrackplus.domain.model
 
 data class WorkoutRecord(
     val id: Long = 0L,
-    val exerciseType: String,
+    val workoutType: WorkoutType,
+    val startTimeMillis: Long,
+    val endTimeMillis: Long,
     val durationMinutes: Int,
-    val calories: Int,
-    val timestamp: Long,
+    val calories: Double,
     val note: String = ""
 )

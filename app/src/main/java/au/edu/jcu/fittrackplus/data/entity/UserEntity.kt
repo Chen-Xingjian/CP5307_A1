@@ -1,15 +1,15 @@
-package au.edu.jcu.fittrackplus.data.local.entity
+package au.edu.jcu.fittrackplus.data.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "users")
+@Entity(tableName = "user_profile")
 data class UserEntity(
     @PrimaryKey val id: Int = 1,
-    val name: String = "",
-    val gender: String = "",
-    val age: Int = 0,
-    val heightCm: Double = 0.0,
-    val weightKg: Double = 0.0,
-    val preferredExercise: String = ""
+    val name: String,
+    val gender: String,
+    val age: Int,
+    val heightCm: Double,
+    val weightKg: Double,
+    val preferredExercise: String
 )
