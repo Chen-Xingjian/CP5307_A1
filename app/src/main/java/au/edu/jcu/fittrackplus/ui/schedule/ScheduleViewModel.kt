@@ -2,30 +2,22 @@ package au.edu.jcu.fittrackplus.ui.schedule
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import au.edu.jcu.fittrackplus.domain.model.Appointment
-import au.edu.jcu.fittrackplus.domain.model.WorkoutType
+import au.edu.jcu.fittrackplus.domain.model.WorkoutPlan
 import au.edu.jcu.fittrackplus.domain.repository.FitTrackRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class ScheduleFormState(
-    val type: WorkoutType = WorkoutType.RUNNING,
-    val scheduledTimeMillis: Long = System.currentTimeMillis(),
+data class PlanFormState(
+    val id: Long = 0L,
+    val name: String = "",
+    val category: String = "Running",
+    val durationMinutes: String = "",
+    val estimatedCalories: String = "",
     val note: String = "",
-    val message: String? = null
-)
-
-data class ScheduleUiState(
-    val form: ScheduleFormState = ScheduleFormState(),
-    val appointments: List<Appointment> = emptyList()
+    val categoryOptions: List<String> = listOf("Running", "Cycling", "Swimming", "Strength"),
+    val error: String? = null
 )
 
 @HiltViewModel
@@ -33,57 +25,92 @@ class ScheduleViewModel @Inject constructor(
     private val repository: FitTrackRepository
 ) : ViewModel() {
 
-    private val formFlow = MutableStateFlow(ScheduleFormState())
+    val plans: StateFlow<List<WorkoutPlan>> =
+        repository.observeAllPlans()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val ui: StateFlow<ScheduleUiState> =
-        combine(
-            formFlow,
-            repository.observeAppointments()
-        ) { form, appointments ->
-            ScheduleUiState(
-                form = form,
-                appointments = appointments
-            )
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = ScheduleUiState()
+    private val _form = MutableStateFlow(PlanFormState())
+    val form: StateFlow<PlanFormState> = _form.asStateFlow()
+
+    val selectedPlan: MutableStateFlow<WorkoutPlan?> = MutableStateFlow(null)
+
+    fun onNameChange(v: String) { _form.update { it.copy(name = v, error = null) } }
+    fun onCategoryChange(v: String) { _form.update { it.copy(category = v, error = null) } }
+    fun onDurationChange(v: String) { _form.update { it.copy(durationMinutes = v.filter(Char::isDigit), error = null) } }
+    fun onCaloriesChange(v: String) { _form.update { it.copy(estimatedCalories = v.filter(Char::isDigit), error = null) } }
+    fun onNoteChange(v: String) { _form.update { it.copy(note = v, error = null) } }
+
+    fun resetForm() { _form.value = PlanFormState() }
+
+    fun loadToForm(plan: WorkoutPlan) {
+        selectedPlan.value = plan
+        _form.value = PlanFormState(
+            id = plan.id,
+            name = plan.name,
+            category = plan.category,
+            durationMinutes = plan.durationMinutes.toString(),
+            estimatedCalories = plan.estimatedCalories.toString(),
+            note = plan.note
         )
-
-    fun setType(type: WorkoutType) {
-        formFlow.update { it.copy(type = type) }
     }
 
-    fun setScheduledTime(millis: Long) {
-        formFlow.update { it.copy(scheduledTimeMillis = millis) }
-    }
+    fun createPlan(onSuccess: () -> Unit) {
+        val f = _form.value
+        val duration = f.durationMinutes.toIntOrNull()
+        val kcal = f.estimatedCalories.toIntOrNull()
 
-    fun setNote(note: String) {
-        formFlow.update { it.copy(note = note) }
-    }
+        if (f.name.isBlank() || duration == null || kcal == null) {
+            _form.update { it.copy(error = "Please complete required fields.") }
+            return
+        }
 
-    fun saveAppointment() {
-        val form = formFlow.value
         viewModelScope.launch {
-            repository.addAppointment(
-                Appointment(
-                    workoutType = form.type,
-                    scheduledTimeMillis = form.scheduledTimeMillis,
-                    note = form.note
+            repository.addPlan(
+                WorkoutPlan(
+                    name = f.name,
+                    category = f.category,
+                    durationMinutes = duration,
+                    estimatedCalories = kcal,
+                    note = f.note
                 )
             )
-            formFlow.update {
-                it.copy(
-                    note = "",
-                    message = "Schedule saved."
-                )
-            }
+            resetForm()
+            onSuccess()
         }
     }
 
-    fun clearMessage() {
-        formFlow.update { it.copy(message = null) }
+    fun updatePlan(onSuccess: () -> Unit) {
+        val f = _form.value
+        val duration = f.durationMinutes.toIntOrNull()
+        val kcal = f.estimatedCalories.toIntOrNull()
+
+        if (f.id <= 0 || f.name.isBlank() || duration == null || kcal == null) {
+            _form.update { it.copy(error = "Invalid plan data.") }
+            return
+        }
+
+        viewModelScope.launch {
+            repository.updatePlan(
+                WorkoutPlan(
+                    id = f.id,
+                    name = f.name,
+                    category = f.category,
+                    durationMinutes = duration,
+                    estimatedCalories = kcal,
+                    note = f.note,
+                    createdAt = selectedPlan.value?.createdAt ?: System.currentTimeMillis(),
+                    updatedAt = System.currentTimeMillis()
+                )
+            )
+            onSuccess()
+        }
     }
 
-    fun formState(): StateFlow<ScheduleFormState> = formFlow.asStateFlow()
+    fun bindPlanById(id: Long) {
+        viewModelScope.launch {
+            repository.observePlanById(id).collect { plan ->
+                selectedPlan.value = plan
+            }
+        }
+    }
 }

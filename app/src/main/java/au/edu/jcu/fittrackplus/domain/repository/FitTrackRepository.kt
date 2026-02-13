@@ -2,6 +2,7 @@ package au.edu.jcu.fittrackplus.domain.repository
 
 import au.edu.jcu.fittrackplus.domain.model.Appointment
 import au.edu.jcu.fittrackplus.domain.model.UserProfile
+import au.edu.jcu.fittrackplus.domain.model.WorkoutPlan
 import au.edu.jcu.fittrackplus.domain.model.WorkoutRecord
 import kotlinx.coroutines.flow.Flow
 
@@ -15,4 +16,10 @@ interface FitTrackRepository {
 
     fun observeAppointments(): Flow<List<Appointment>>
     suspend fun addAppointment(appointment: Appointment)
+
+    // ===== Workout Plan =====
+    fun observeAllPlans(): Flow<List<WorkoutPlan>>
+    fun observePlanById(id: Long): Flow<WorkoutPlan?>
+    suspend fun addPlan(plan: WorkoutPlan): Long
+    suspend fun updatePlan(plan: WorkoutPlan)
 }
