@@ -2,9 +2,21 @@ package au.edu.jcu.fittrackplus.ui.i18n
 
 import au.edu.jcu.fittrackplus.domain.model.WorkoutType
 
+/**
+ * Returns a localized display name for a [WorkoutType].
+ *
+ * Notes:
+ * - English uses [WorkoutType.displayName] directly.
+ * - Chinese uses a fixed mapping to keep UI labels consistent across screens.
+ * - This function is UI-layer only and does not affect stored values (which use `WorkoutType.name`).
+ *
+ * @param isZh Whether the current UI language is Chinese.
+ */
 fun WorkoutType.localizedName(isZh: Boolean): String {
+    // Use the built-in English display name when not in Chinese.
     if (!isZh) return this.displayName
 
+    // Chinese label mapping (UI only).
     return when (this) {
         WorkoutType.RUNNING -> "跑步"
         WorkoutType.WALKING -> "步行"

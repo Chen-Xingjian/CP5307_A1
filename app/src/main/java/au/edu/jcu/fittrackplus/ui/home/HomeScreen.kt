@@ -22,62 +22,120 @@ import au.edu.jcu.fittrackplus.ui.components.FitTrackScreen
 import au.edu.jcu.fittrackplus.ui.i18n.LocalStrings
 import au.edu.jcu.fittrackplus.ui.i18n.localizedName
 
+/**
+ * Home screen for starting workouts.
+ *
+ * This screen supports two entry modes:
+ * 1) Regular usage (manual selection + quick start).
+ * 2) Plan-applied usage (preset type + preset duration, optionally auto-started).
+ *
+ * Important:
+ * - UI styling is handled here, but business logic is delegated to [HomeViewModel].
+ * - Navigation decisions are delegated via callbacks to the NavGraph (caller).
+ */
 @Composable
 fun HomeScreen(
+    /** Navigate to Schedule list. */
     onGoSchedule: () -> Unit,
+    /** Navigate to History screen. */
     onGoHistory: () -> Unit,
 
+    /** Preset workout type (WorkoutType.name) from plan-apply flow. */
     presetTypeName: String = "",
+    /** Preset duration in minutes from plan-apply flow. */
     presetMinutes: Int = 0,
+    /** If true, the preset plan should auto-start once when entering the screen. */
     autoStart: Boolean = false,
 
+    /**
+     * Non-empty indicates the workout was started from another screen (e.g., schedule).
+     * When saved, Home should immediately navigate back to this route (without showing a Home snackbar).
+     */
     returnToRoute: String = "",
 
+    /**
+     * Navigation helper used after a successful save (e.g., return back to schedule list).
+     * The NavGraph controls the actual navigation stack behavior.
+     */
     onNavigateBack: (String) -> Unit,
 
-    // ✅ NEW: only called when a plan-started workout is actually saved
+    /**
+     * Callback for plan-applied workouts:
+     * Only invoke when the plan-started workout is actually saved successfully.
+     * Used by NavGraph to show "Saved to history" snackbar on the Schedule screen.
+     */
     onPlanSaved: () -> Unit,
 
+    /**
+     * Reports whether the workout is actively running/paused.
+     * Used by NavGraph to decide whether bottom navigation should be blocked by a leave-confirm dialog.
+     */
     onWorkoutActiveChange: (Boolean) -> Unit,
+
+    /**
+     * Optional callback to report the current return-to route (kept for compatibility with NavGraph logic).
+     */
     onReturnToRouteChange: (String) -> Unit,
 
+    /**
+     * Registers handlers for NavGraph's leave-confirm dialog:
+     * - Pause the timer when the dialog shows
+     * - Resume when user continues
+     * - Discard when user exits without saving
+     */
     registerPauseHandler: (((() -> Unit)) -> Unit),
     registerResumeHandler: (((() -> Unit)) -> Unit),
     registerDiscardHandler: (((() -> Unit)) -> Unit),
 
+    /** Home screen ViewModel. */
     vm: HomeViewModel = hiltViewModel()
 ) {
     val s = LocalStrings.current
     val isZh = s.isZh
 
+    // Collect UI state from ViewModel in a lifecycle-aware manner.
     val state by vm.ui.collectAsStateWithLifecycle()
+
+    // Snackbar host for Home-specific messages (non-plan flows).
     val snack = remember { SnackbarHostState() }
 
+    // UI-only state for dropdowns and dialogs.
     var categoryExpanded by rememberSaveable { mutableStateOf(false) }
     var showExitDialog by rememberSaveable { mutableStateOf(false) }
     var showCategoryHint by rememberSaveable { mutableStateOf(false) }
 
+    /**
+     * Ensures plan auto-start triggers at most once per unique preset tuple.
+     * This prevents unintended re-trigger when the screen recomposes or returns to IDLE.
+     */
     var autoStartConsumed by rememberSaveable(
         presetTypeName,
         presetMinutes,
         returnToRoute
     ) { mutableStateOf(false) }
 
+    // Report return-to info upward (some NavGraph variants rely on this).
     LaunchedEffect(returnToRoute) {
         onReturnToRouteChange(returnToRoute)
     }
 
+    // Report whether workout is active (RUNNING or PAUSED) for navigation guarding.
     LaunchedEffect(state.phase) {
         val active = state.phase == WorkoutPhase.RUNNING || state.phase == WorkoutPhase.PAUSED
         onWorkoutActiveChange(active)
     }
 
+    // Register pause/resume/discard handlers for NavGraph's leave-confirm dialog.
     LaunchedEffect(Unit) {
         registerPauseHandler { vm.pauseForLeave() }
         registerResumeHandler { vm.resumeForLeave() }
         registerDiscardHandler { vm.discardAndReset() }
     }
 
+    /**
+     * Auto-start logic for plan-applied workouts.
+     * Only runs once per preset. All preset application details are handled inside ViewModel.
+     */
     LaunchedEffect(autoStart, presetTypeName, presetMinutes, autoStartConsumed) {
         if (!autoStart) return@LaunchedEffect
         if (autoStartConsumed) return@LaunchedEffect
@@ -88,11 +146,13 @@ fun HomeScreen(
     }
 
     /**
-     * ✅ FIX:
-     * - If coming from schedule (returnToRoute != ""), and saved:
-     *   1) fire onPlanSaved() to let NavGraph show snackbar in Schedule
-     *   2) clear toast
-     *   3) immediately navigate back (no snackbar on Home)
+     * Save/toast handling:
+     * - If a workout was started from schedule (returnToRoute is not blank) and saved:
+     *   1) Notify NavGraph via [onPlanSaved] so Schedule can show snackbar
+     *   2) Clear the toast key in VM
+     *   3) Navigate back immediately (no Home snackbar)
+     *
+     * - Otherwise, show snackbar locally on Home and clear the toast key.
      */
     LaunchedEffect(state.lastSavedMessage) {
         state.lastSavedMessage?.let { key ->
@@ -113,6 +173,7 @@ fun HomeScreen(
         }
     }
 
+    // Exit confirmation dialog for STOPPED state (explicitly not saving).
     if (showExitDialog) {
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
@@ -134,6 +195,7 @@ fun HomeScreen(
         )
     }
 
+    // Category hint dialog.
     if (showCategoryHint) {
         AlertDialog(
             onDismissRequest = { showCategoryHint = false },
@@ -144,7 +206,7 @@ fun HomeScreen(
     }
 
     FitTrackScreen {
-        // 顶部快捷入口：只在 IDLE 显示
+        // Top shortcuts are only visible in IDLE state.
         if (state.isIdle) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -158,7 +220,7 @@ fun HomeScreen(
         if (state.isIdle) {
             Spacer(Modifier.height(8.dp))
 
-            // Quick Start button
+            // Large round Quick Start button.
             Box(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
@@ -188,6 +250,7 @@ fun HomeScreen(
 
             Spacer(Modifier.height(12.dp))
 
+            // Setup card: category selector + target time inputs.
             FitTrackCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.weight(1f)) {
@@ -215,6 +278,7 @@ fun HomeScreen(
 
                     Spacer(Modifier.width(10.dp))
 
+                    // Info icon (kept as a simple UI glyph, typically not localized).
                     Text(
                         text = "ⓘ",
                         modifier = Modifier
@@ -253,16 +317,14 @@ fun HomeScreen(
             Spacer(Modifier.height(8.dp))
             SnackbarHost(hostState = snack)
         } else {
-            // Workout running UI (center)
+            // Running/paused/stopped UI centered in the screen.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                FitTrackCard(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                FitTrackCard(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = state.selectedCategory.localizedName(isZh),
                         style = MaterialTheme.typography.headlineMedium,
@@ -290,7 +352,9 @@ fun HomeScreen(
                                 onClick = { if (state.isRunning) vm.pause() else vm.resume() },
                                 enabled = state.canControl,
                                 modifier = Modifier.weight(1f)
-                            ) { Text(if (state.isRunning) s.pause else s.start) }
+                            ) {
+                                Text(if (state.isRunning) s.pause else s.start)
+                            }
 
                             Button(
                                 onClick = vm::stop,
@@ -324,9 +388,18 @@ fun HomeScreen(
     }
 }
 
+/**
+ * Returns the seconds to show on screen.
+ *
+ * - If countdown is used, show remaining seconds.
+ * - Otherwise, show elapsed seconds.
+ */
 private fun displaySeconds(state: HomeWorkoutUiState): Long =
     state.remainingSeconds ?: state.elapsedSeconds
 
+/**
+ * Formats seconds as HH:mm:ss.
+ */
 private fun formatHHmmss(totalSeconds: Long): String {
     val h = totalSeconds / 3600
     val m = (totalSeconds % 3600) / 60

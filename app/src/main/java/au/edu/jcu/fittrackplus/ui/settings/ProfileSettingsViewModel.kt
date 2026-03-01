@@ -13,17 +13,32 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * UI state for the Profile Settings screen.
+ *
+ * Notes:
+ * - All numeric values are stored as strings to support partial user input and validation.
+ * - [gender] is stored as a stable key ("male" / "female" / "other") and localized in the UI.
+ */
 data class ProfileUiState(
     val name: String = "",
     val gender: String = "", // "male" / "female" / "other"
     val age: String = "",
     val heightCm: String = "",
-    val weightKg: String = "", // allow decimal input
+    val weightKg: String = "", // Allows decimal input.
 
     val error: String? = null,
     val message: String? = null
 )
 
+/**
+ * ViewModel for managing user profile input and persistence.
+ *
+ * Responsibilities:
+ * - Load the existing profile from [FitTrackRepository] and map it into [ProfileUiState].
+ * - Validate user input and persist changes back to the repository.
+ * - Keep stable identifiers such as [profileId] and [preferredExercise] intact when saving.
+ */
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val repository: FitTrackRepository
@@ -32,11 +47,12 @@ class ProfileViewModel @Inject constructor(
     private val _ui = MutableStateFlow(ProfileUiState())
     val ui: StateFlow<ProfileUiState> = _ui.asStateFlow()
 
-    // ✅ 关键：根据你的报错，UserProfile.id 期望是 Int
+    // Persisted identity fields that should not be lost during editing.
     private var profileId: Int = 1
     private var preferredExercise: String = ""
 
     init {
+        // Observe the stored profile and update UI state whenever it changes.
         viewModelScope.launch {
             repository.observeUserProfile().collectLatest { profile ->
                 if (profile == null) return@collectLatest
@@ -51,15 +67,22 @@ class ProfileViewModel @Inject constructor(
                         age = profile.age.takeIf { a -> a > 0 }?.toString() ?: "",
                         heightCm = profile.heightCm.takeIf { h -> h > 0 }?.toString() ?: "",
                         weightKg = profile.weightKg.takeIf { w -> w > 0 }?.toString() ?: "",
-                        error = null
+                        error = null,
+                        message = null
                     )
                 }
             }
         }
     }
 
+    /** Updates the name field and clears any previous messages. */
     fun setName(v: String) = _ui.update { it.copy(name = v, error = null, message = null) }
 
+    /**
+     * Updates the gender field using stable normalized keys.
+     *
+     * @param v A value coming from UI selection. Any unexpected value maps to "other".
+     */
     fun setGender(v: String) {
         val normalized = when (v.lowercase()) {
             "male" -> "male"
@@ -69,18 +92,30 @@ class ProfileViewModel @Inject constructor(
         _ui.update { it.copy(gender = normalized, error = null, message = null) }
     }
 
+    /**
+     * Updates age as a numeric string (max 3 digits).
+     * The final validation happens in [saveProfile].
+     */
     fun setAge(v: String) {
         val filtered = v.filter(Char::isDigit).take(3)
         _ui.update { it.copy(age = filtered, error = null, message = null) }
     }
 
+    /**
+     * Updates height (cm) as a numeric string (max 3 digits).
+     * The final validation happens in [saveProfile].
+     */
     fun setHeightCm(v: String) {
         val filtered = v.filter(Char::isDigit).take(3)
         _ui.update { it.copy(heightCm = filtered, error = null, message = null) }
     }
 
+    /**
+     * Updates weight (kg) as a numeric string allowing a single decimal separator.
+     * The final validation happens in [saveProfile].
+     */
     fun setWeightKg(v: String) {
-        // allow digits + one dot
+        // Allows digits plus a single dot for decimals.
         val cleaned = buildString {
             var dotUsed = false
             for (ch in v) {
@@ -93,9 +128,19 @@ class ProfileViewModel @Inject constructor(
                 }
             }
         }.take(6)
+
         _ui.update { it.copy(weightKg = cleaned, error = null, message = null) }
     }
 
+    /**
+     * Validates the current UI state and persists it as a [UserProfile].
+     *
+     * Validation rules:
+     * - Name is required.
+     * - Age: 1–120
+     * - Height: 50–250 cm
+     * - Weight: 20–300 kg
+     */
     fun saveProfile() {
         val state = _ui.value
 
@@ -105,6 +150,7 @@ class ProfileViewModel @Inject constructor(
         val heightDouble = state.heightCm.toDoubleOrNull() ?: 0.0
         val weightDouble = state.weightKg.toDoubleOrNull() ?: 0.0
 
+        // User-facing validation message (kept simple and explicit).
         val err = when {
             name.isBlank() -> "Name is required."
             ageInt !in 1..120 -> "Age must be 1–120."
@@ -118,15 +164,16 @@ class ProfileViewModel @Inject constructor(
             return
         }
 
+        // Save to repository using stable identity fields and validated values.
         viewModelScope.launch {
             repository.saveUserProfile(
                 UserProfile(
-                    id = profileId,                // ✅ Int
+                    id = profileId,
                     name = name,
                     gender = gender,
                     age = ageInt,
                     heightCm = heightDouble,
-                    weightKg = weightDouble,        // ✅ Double
+                    weightKg = weightDouble,
                     preferredExercise = preferredExercise
                 )
             )

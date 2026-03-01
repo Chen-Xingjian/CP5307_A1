@@ -10,19 +10,35 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 
 /**
- * ===== Design tokens (统一风格) =====
- * 只在 UI 层用，不影响任何业务逻辑
+ * UI-only design tokens used to keep spacing and shape consistent across screens.
+ *
+ * Notes:
+ * - This object is intentionally kept in the UI layer.
+ * - Adjusting these values should not affect any business logic.
  */
 object FitTrackDimens {
+    /** Default padding applied to most screens. */
     val ScreenPadding = 16.dp
+
+    /** Spacing between major sections on a screen. */
     val SectionSpacing = 16.dp
+
+    /** Spacing between items within a section (forms, lists, etc.). */
     val ItemSpacing = 12.dp
+
+    /** Default corner radius for cards. */
     val CardRadius = 16.dp
+
+    /** Smaller corner radius for buttons and compact elements. */
     val SmallRadius = 12.dp
 }
 
 /**
- * 统一页面外层容器：所有 Screen 建议都用它包一层
+ * A consistent screen-level container.
+ *
+ * Recommended usage:
+ * - Wrap the main content of each screen with [FitTrackScreen] to apply the same
+ *   padding and default vertical spacing everywhere.
  */
 @Composable
 fun FitTrackScreen(
@@ -39,7 +55,7 @@ fun FitTrackScreen(
 }
 
 /**
- * 统一 Section 标题（更像健身 App 的分区结构）
+ * A consistent section title style (e.g., for grouping settings or workout blocks).
  */
 @Composable
 fun FitTrackSectionTitle(
@@ -56,7 +72,11 @@ fun FitTrackSectionTitle(
 }
 
 /**
- * 统一 Card 容器（列表条目、表单块、分区容器都可以用）
+ * A reusable card container for list rows, form blocks, or section panels.
+ *
+ * Behavior:
+ * - If [onClick] is provided, the whole card becomes clickable without changing
+ *   any underlying business logic.
  */
 @Composable
 fun FitTrackCard(
@@ -91,10 +111,11 @@ fun FitTrackCard(
 }
 
 /**
- * 统一“可点击选择框”（用于 dropdown / date picker / filter）
+ * A consistent "click-to-select" outlined field for dropdowns, date pickers, and filters.
  *
- * - 关键点：enabled = true，保证黑边框
- * - 用 overlay 捕获点击，不改你原有交互
+ * Key points:
+ * - `enabled = true` keeps the outlined border in the normal style (not greyed out).
+ * - A transparent overlay captures clicks so the field remains read-only while still interactive.
  */
 @Composable
 fun ClickableOutlinedField(
@@ -109,13 +130,13 @@ fun ClickableOutlinedField(
             value = value,
             onValueChange = {},
             readOnly = true,
-            enabled = true, // ✅ 永远正常边框（不灰）
+            enabled = true, // Keep the standard outlined style while preventing input edits.
             label = { Text(label) },
             supportingText = supportingText?.let { { Text(it) } },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
-        // 覆盖层：点任意位置触发
+        // Transparent overlay: clicking anywhere triggers the action (e.g., open menu/picker).
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -125,7 +146,7 @@ fun ClickableOutlinedField(
 }
 
 /**
- * 统一 Primary 按钮（更像 App 主按钮）
+ * A consistent primary action button (the main call-to-action on a screen).
  */
 @Composable
 fun FitTrackPrimaryButton(
@@ -145,7 +166,7 @@ fun FitTrackPrimaryButton(
 }
 
 /**
- * 统一 Secondary 按钮（次操作）
+ * A consistent secondary action button for non-destructive or less prominent actions.
  */
 @Composable
 fun FitTrackSecondaryButton(
@@ -165,7 +186,7 @@ fun FitTrackSecondaryButton(
 }
 
 /**
- * 统一 Danger 按钮（删除/不可逆操作）
+ * A consistent "danger" button for destructive or irreversible actions (e.g., delete).
  */
 @Composable
 fun FitTrackDangerButton(
@@ -189,7 +210,7 @@ fun FitTrackDangerButton(
 }
 
 /**
- * 统一小图标按钮（Schedule/History/Plan actions 常用）
+ * A standardized icon button size used across the app (e.g., plan actions, quick actions).
  */
 @Composable
 fun FitTrackIconButton(

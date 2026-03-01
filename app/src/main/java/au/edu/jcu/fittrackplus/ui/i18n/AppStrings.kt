@@ -1,15 +1,27 @@
 package au.edu.jcu.fittrackplus.ui.i18n
 
+/**
+ * Strongly-typed container for all user-facing strings in the app.
+ *
+ * Notes:
+ * - Keep this as the single source of truth for UI text to avoid hard-coded strings.
+ * - Prefer short, reusable labels (e.g., "Apply") and compose them in UI when needed.
+ * - `isZh` is used as a simple runtime flag for conditional UI formatting where required.
+ */
 data class AppStrings(
+    /** True when the active language is Chinese (ZH). */
     val isZh: Boolean,
 
+    /** Application display name. */
     val appName: String,
 
-    // bottom tab
+    // ----- Bottom navigation -----
+    /** Bottom tab: Home. */
     val home: String,
+    /** Bottom tab: Settings. */
     val setting: String,
 
-    // common
+    // ----- Common actions -----
     val back: String,
     val reset: String,
     val delete: String,
@@ -21,10 +33,11 @@ data class AppStrings(
     val new: String,
     val edit: String,
 
-    // ✅ new: used by schedule list button description
+    // ----- Accessibility / content descriptions -----
+    /** Used as the content description for "detail" actions in list items. */
     val detail: String,
 
-    // common fields/labels
+    // ----- Common fields / labels -----
     val name: String,
     val gender: String,
     val male: String,
@@ -40,7 +53,8 @@ data class AppStrings(
     val noteLabel: String,
     val startLabel: String,
 
-    // home
+    // ----- Home (workout timer) -----
+    /** "Quick\nStart" label (line-break included). */
     val quickStart: String,
     val pause: String,
     val start: String,
@@ -48,52 +62,61 @@ data class AppStrings(
     val schedule: String,
     val history: String,
 
-    // i18n: Hour/Min label
+    // ----- Time input labels -----
     val hour: String,
     val minute: String,
 
+    // ----- Optional target inputs (kept for compatibility / future use) -----
     val targetTimeOptional: String,
     val targetMinOptional: String,
 
+    // ----- Toast / snackbar messages -----
     val savedToHistory: String,
     val timeUp: String,
 
+    // ----- Dialogs -----
     val exitWorkoutTitle: String,
     val exitWorkoutBody: String,
     val workoutTypesHintTitle: String,
     val workoutTypesHintBody: String,
 
-    // history
+    // ----- History -----
     val historyTitle: String,
     val noRecords: String,
     val selected: String,
 
-    // settings
+    // ----- Settings -----
     val settingsTitle: String,
     val personalInfo: String,
     val workoutTypeManagement: String,
     val preferences: String,
     val personalInfoTitle: String,
 
-    // prefs
+    // ----- Preferences -----
     val preferencesTitle: String,
     val language: String,
     val theme: String,
     val light: String,
     val dark: String,
 
-    // workout types manage
+    // ----- Workout types management -----
     val workoutTypesTitle: String,
     val filter: String,
     val all: String,
     val applied: String,
     val notApplied: String,
 
-    // 这个 apply 复用：既可以表示“应用运动种类”，也可以表示“应用计划”
+    /**
+     * Shared "Apply" label.
+     *
+     * This is intentionally reused:
+     * - Apply/cancel workout types
+     * - Apply a workout plan (start from schedule)
+     */
     val apply: String,
     val cancelApply: String,
 
-    // schedule (plans)
+    // ----- Schedule (plans) -----
     val scheduleTitle: String,
     val newPlanTitle: String,
     val planDetailTitle: String,
@@ -104,8 +127,16 @@ data class AppStrings(
     val saveChanges: String
 )
 
+/**
+ * Factory for building [AppStrings] based on [AppLanguage].
+ *
+ * Keep language packs private to discourage direct access outside this file.
+ */
 object StringsFactory {
 
+    /**
+     * Returns the string bundle for the requested language.
+     */
     fun of(lang: AppLanguage): AppStrings {
         return when (lang) {
             AppLanguage.EN -> en()
@@ -113,6 +144,9 @@ object StringsFactory {
         }
     }
 
+    /**
+     * English string bundle.
+     */
     private fun en() = AppStrings(
         isZh = false,
 
@@ -204,6 +238,9 @@ object StringsFactory {
         saveChanges = "Save Changes"
     )
 
+    /**
+     * Chinese (Simplified) string bundle.
+     */
     private fun zh() = AppStrings(
         isZh = true,
 

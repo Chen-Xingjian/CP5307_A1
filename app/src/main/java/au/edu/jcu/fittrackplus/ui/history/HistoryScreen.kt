@@ -25,6 +25,17 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+/**
+ * History screen showing workout records with optional filters:
+ * - Workout type (dropdown)
+ * - Date (date picker)
+ *
+ * Users can select records and perform bulk actions (delete/reset filters) via the top app bar.
+ *
+ * Note:
+ * - Filtering logic is handled by [HistoryViewModel].
+ * - This composable only renders UI and forwards user intents to the view model.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
@@ -34,16 +45,21 @@ fun HistoryScreen(
     val s = LocalStrings.current
     val isZh = s.isZh
 
+    // Screen state from ViewModel (lifecycle-aware).
     val ui by viewModel.ui.collectAsStateWithLifecycle()
-    val ctx = LocalContext.current
 
+    val ctx = LocalContext.current
     var typeExpanded by rememberSaveable { mutableStateOf(false) }
 
+    /**
+     * Opens a native DatePicker dialog and writes the selected day into ViewModel as `yyyyMMdd` int.
+     */
     fun openDatePicker() {
         val cal = Calendar.getInstance()
         DatePickerDialog(
             ctx,
             { _, year, month, dayOfMonth ->
+                // Encode date as an integer key for easy comparison/filtering.
                 val key = year * 10000 + (month + 1) * 100 + dayOfMonth
                 viewModel.setDayFilter(key)
             },
@@ -59,6 +75,7 @@ fun HistoryScreen(
                 title = { Text(s.historyTitle) },
                 navigationIcon = { TextButton(onClick = onBack) { Text(s.back) } },
                 actions = {
+                    // Show bulk delete only when user has selected records.
                     if (ui.selectedCount > 0) {
                         TextButton(onClick = viewModel::deleteSelected) {
                             Text("${s.delete}(${ui.selectedCount})")
@@ -70,10 +87,9 @@ fun HistoryScreen(
         }
     ) { inner ->
         FitTrackScreen(
-            modifier = Modifier
-                .padding(inner)
+            modifier = Modifier.padding(inner)
         ) {
-            // ===== Filters Card =====
+            // ===== Filters =====
             FitTrackCard {
                 Text(
                     text = s.filter,
@@ -87,16 +103,19 @@ fun HistoryScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // ---- Type filter ----
+                    // ---- Type filter (dropdown) ----
                     Box(modifier = Modifier.weight(1f)) {
                         OutlinedTextField(
                             value = ui.selectedType?.localizedName(isZh) ?: s.selectAll,
                             onValueChange = {},
                             readOnly = true,
-                            enabled = true, // ✅ keep normal border
+                            // Keep enabled for a normal border style; click is handled by overlay box.
+                            enabled = true,
                             label = { Text(s.type) },
                             modifier = Modifier.fillMaxWidth()
                         )
+
+                        // Transparent overlay to capture taps without making the field editable.
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
@@ -126,16 +145,19 @@ fun HistoryScreen(
                         }
                     }
 
-                    // ---- Date filter ----
+                    // ---- Date filter (native date picker) ----
                     Box(modifier = Modifier.weight(1f)) {
                         OutlinedTextField(
                             value = ui.selectedDayKey?.let { formatDayKey(it) } ?: s.selectAll,
                             onValueChange = {},
                             readOnly = true,
-                            enabled = true, // ✅ keep normal border
+                            // Keep enabled for a normal border style; click is handled by overlay box.
+                            enabled = true,
                             label = { Text(s.date) },
                             modifier = Modifier.fillMaxWidth()
                         )
+
+                        // Transparent overlay to open the date picker.
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
@@ -147,7 +169,7 @@ fun HistoryScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // ===== Empty / List =====
+            // ===== Empty state / Records list =====
             if (ui.filteredRecords.isEmpty()) {
                 FitTrackCard {
                     Text(
@@ -174,6 +196,11 @@ fun HistoryScreen(
     }
 }
 
+/**
+ * A selectable record card used in [HistoryScreen].
+ *
+ * Selection state is controlled by the parent (ViewModel) and toggled via [onToggle].
+ */
 @Composable
 private fun RecordSelectableCard(
     record: WorkoutRecord,
@@ -183,42 +210,44 @@ private fun RecordSelectableCard(
     val s = LocalStrings.current
     val isZh = s.isZh
 
+    // Format start time for display (device locale).
     val timeFmt = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()) }
     val startTime = timeFmt.format(Date(record.startTimeMillis))
 
-    val container = if (selected) MaterialTheme.colorScheme.secondaryContainer
+    val containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer
     else MaterialTheme.colorScheme.surface
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onToggle() },
-        colors = CardDefaults.cardColors(containerColor = container),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // Title line (primary)
+            // Primary title: localized workout type.
             Text(
                 text = record.workoutType.localizedName(isZh),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
 
-            // Metrics line (secondary)
+            // Secondary metrics: duration + calories.
             Text(
                 text = "${formatHHmmss(record.durationSeconds)} • ${record.calories} kcal",
                 style = MaterialTheme.typography.bodyMedium
             )
 
-            // Start time (small)
+            // Start time label.
             Text(
                 text = "${s.startLabel}: $startTime",
                 style = MaterialTheme.typography.bodySmall
             )
 
+            // Optional note.
             if (record.note.isNotBlank()) {
                 Text(
                     text = "${s.noteLabel}: ${record.note}",
@@ -226,6 +255,7 @@ private fun RecordSelectableCard(
                 )
             }
 
+            // Selection hint.
             if (selected) {
                 Spacer(Modifier.height(2.dp))
                 Row(
@@ -243,6 +273,9 @@ private fun RecordSelectableCard(
     }
 }
 
+/**
+ * Converts an integer day key (yyyyMMdd) into a formatted date string (yyyy-MM-dd).
+ */
 private fun formatDayKey(dayKey: Int): String {
     val y = dayKey / 10000
     val m = (dayKey / 100) % 100
@@ -250,6 +283,9 @@ private fun formatDayKey(dayKey: Int): String {
     return "%04d-%02d-%02d".format(y, m, d)
 }
 
+/**
+ * Formats duration seconds into HH:mm:ss.
+ */
 private fun formatHHmmss(totalSeconds: Long): String {
     val sec = totalSeconds.coerceAtLeast(0)
     val h = sec / 3600

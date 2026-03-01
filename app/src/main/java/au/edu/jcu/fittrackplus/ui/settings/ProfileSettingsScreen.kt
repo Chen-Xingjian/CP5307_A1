@@ -34,6 +34,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import au.edu.jcu.fittrackplus.ui.i18n.LocalStrings
 import au.edu.jcu.fittrackplus.ui.profile.ProfileViewModel
 
+/**
+ * Profile settings screen.
+ *
+ * Allows users to update personal information used for calorie estimation
+ * (e.g., weight, height, and age).
+ *
+ * Note:
+ * - This screen intentionally keeps the business logic in [ProfileViewModel].
+ * - Dropdown fields use an overlay click target to preserve the OutlinedTextField look
+ *   while preventing direct text input.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileSettingsScreen(
@@ -43,9 +54,17 @@ fun ProfileSettingsScreen(
     val s = LocalStrings.current
     val ui by vm.ui.collectAsStateWithLifecycle()
 
+    // Controls the visibility of the gender dropdown menu.
     var genderExpanded by rememberSaveable { mutableStateOf(false) }
+
+    // Stable keys persisted to storage.
     val genderOptions = listOf("male", "female", "other")
 
+    /**
+     * Maps a persisted gender key to a localized label.
+     *
+     * @param value Persisted gender key ("male" / "female" / "other").
+     */
     fun genderDisplay(value: String): String {
         return when (value) {
             "male" -> s.male
@@ -70,8 +89,13 @@ fun ProfileSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
 
+            // Helper text shown at the top of the form.
             Text(
-                text = if (s.isZh) "完善资料用于更准确的消耗估算" else "Complete your profile for better calorie estimation",
+                text = if (s.isZh) {
+                    "完善资料用于更准确的消耗估算"
+                } else {
+                    "Complete your profile for better calorie estimation"
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -87,6 +111,7 @@ fun ProfileSettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
 
+                    // Name
                     OutlinedTextField(
                         value = ui.name,
                         onValueChange = vm::setName,
@@ -94,7 +119,10 @@ fun ProfileSettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    // ✅ Gender dropdown：黑边框 + 不可输入 + 可点击展开
+                    // Gender dropdown:
+                    // - enabled=true keeps the normal OutlinedTextField border styling.
+                    // - readOnly=true prevents keyboard input.
+                    // - an overlay box captures clicks to open the menu.
                     Box {
                         val currentGender = ui.gender.ifBlank { "male" }
 
@@ -102,11 +130,12 @@ fun ProfileSettingsScreen(
                             value = genderDisplay(currentGender),
                             onValueChange = {},
                             readOnly = true,
-                            enabled = true, // ✅ 黑边框
+                            enabled = true,
                             label = { Text(s.gender) },
                             modifier = Modifier.fillMaxWidth()
                         )
 
+                        // Transparent overlay to handle clicks anywhere on the field.
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
@@ -121,7 +150,8 @@ fun ProfileSettingsScreen(
                                 DropdownMenuItem(
                                     text = { Text(genderDisplay(g)) },
                                     onClick = {
-                                        vm.setGender(g) // 存的仍是 male/female/other
+                                        // Persist the stable gender key ("male" / "female" / "other").
+                                        vm.setGender(g)
                                         genderExpanded = false
                                     }
                                 )
@@ -129,6 +159,7 @@ fun ProfileSettingsScreen(
                         }
                     }
 
+                    // Age
                     OutlinedTextField(
                         value = ui.age,
                         onValueChange = vm::setAge,
@@ -137,6 +168,7 @@ fun ProfileSettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
 
+                    // Height (cm)
                     OutlinedTextField(
                         value = ui.heightCm,
                         onValueChange = vm::setHeightCm,
@@ -145,6 +177,7 @@ fun ProfileSettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
 
+                    // Weight (kg)
                     OutlinedTextField(
                         value = ui.weightKg,
                         onValueChange = vm::setWeightKg,
@@ -153,9 +186,11 @@ fun ProfileSettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
 
+                    // Inline feedback from the ViewModel.
                     ui.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     ui.message?.let { Text(it) }
 
+                    // Persist profile changes.
                     Button(
                         onClick = vm::saveProfile,
                         modifier = Modifier.fillMaxWidth()

@@ -18,21 +18,38 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * UI form state for creating/editing a workout plan.
+ *
+ * Notes:
+ * - `selectedType` uses a stable enum identifier (WorkoutType) instead of display text.
+ * - `caloriesAuto` is turned off once the user manually edits the calories field.
+ */
 data class PlanFormState(
     val id: Long = 0L,
     val name: String = "",
 
-    // 用稳定标识：WorkoutType（而不是显示文本）
+    /** Stable identifier for the selected workout type. */
     val selectedType: WorkoutType = WorkoutType.RUNNING,
+
+    /** Available workout types (usually restricted to enabled types from settings). */
     val categoryOptions: List<WorkoutType> = WorkoutType.entries.toList(),
 
+    /** Minutes input as text to support partial/invalid user input gracefully. */
     val durationMinutes: String = "",
+
+    /** Calories input as text to support partial/invalid user input gracefully. */
     val estimatedCalories: String = "",
+
     val note: String = "",
 
-    // 自动计算：用户手动改 calorie 后就关闭自动覆盖
+    /**
+     * When true, calories will be recomputed automatically when type/duration changes.
+     * When the user edits calories manually, this becomes false to avoid overwriting user input.
+     */
     val caloriesAuto: Boolean = true,
 
+    /** Validation or operation error message for the form. */
     val error: String? = null
 )
 
@@ -41,6 +58,10 @@ class ScheduleViewModel @Inject constructor(
     private val repository: FitTrackRepository
 ) : ViewModel() {
 
+    /**
+     * All workout plans, sorted by repository implementation.
+     * Exposed as StateFlow for Compose consumption.
+     */
     val plans: StateFlow<List<WorkoutPlan>> =
         repository.observeAllPlans()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -48,58 +69,86 @@ class ScheduleViewModel @Inject constructor(
     private val _form = MutableStateFlow(PlanFormState())
     val form: StateFlow<PlanFormState> = _form.asStateFlow()
 
+    /**
+     * The plan currently bound to the detail screen (nullable until loaded).
+     */
     val selectedPlan: MutableStateFlow<WorkoutPlan?> = MutableStateFlow(null)
 
     init {
-        // 运动种类管理联动：只展示“已启用”的类型
+        // Keep the plan type options in sync with "enabled workout types" from Settings.
         viewModelScope.launch {
             runCatching { repository.observeEnabledWorkoutTypes() }
                 .getOrNull()
                 ?.collect { enabled ->
                     if (enabled.isEmpty()) return@collect
+
                     _form.update { f ->
                         val newSelected =
                             if (enabled.contains(f.selectedType)) f.selectedType else enabled.first()
                         f.copy(categoryOptions = enabled, selectedType = newSelected)
                     }
+
+                    // Recompute calories only when auto mode is still enabled.
                     recomputeCaloriesIfAuto()
                 }
         }
     }
 
-    // ===== 列表：单条删除（对应 UI 的 Delete 按钮）=====
+    // ---------- List actions ----------
+
+    /**
+     * Deletes a single plan (used by the list screen "Delete" action).
+     */
     fun deletePlan(id: Long) {
         viewModelScope.launch {
             repository.deletePlanById(id)
         }
     }
 
-    // ===== 表单：输入 =====
+    // ---------- Form input handlers ----------
+
+    /**
+     * Updates plan name and clears any previous error.
+     */
     fun onNameChange(v: String) {
         _form.update { it.copy(name = v, error = null) }
     }
 
+    /**
+     * Updates the selected workout type and recomputes calories if auto mode is on.
+     */
     fun onTypeChange(t: WorkoutType) {
         _form.update { it.copy(selectedType = t, error = null) }
         recomputeCaloriesIfAuto()
     }
 
+    /**
+     * Updates duration text (digits only) and recomputes calories if auto mode is on.
+     */
     fun onDurationChange(v: String) {
         val filtered = v.filter(Char::isDigit).take(4)
         _form.update { it.copy(durationMinutes = filtered, error = null) }
         recomputeCaloriesIfAuto()
     }
 
-    // 用户手动改卡路里 => 关闭自动覆盖
+    /**
+     * Updates calories text (digits only) and disables auto mode to preserve user input.
+     */
     fun onCaloriesChange(v: String) {
         val filtered = v.filter(Char::isDigit).take(6)
         _form.update { it.copy(estimatedCalories = filtered, caloriesAuto = false, error = null) }
     }
 
+    /**
+     * Updates note text and clears any previous error.
+     */
     fun onNoteChange(v: String) {
         _form.update { it.copy(note = v, error = null) }
     }
 
+    /**
+     * Resets the form to a clean state while preserving the current type options and selection.
+     */
     fun resetForm() {
         val cur = _form.value
         _form.value = PlanFormState(
@@ -109,6 +158,12 @@ class ScheduleViewModel @Inject constructor(
         recomputeCaloriesIfAuto()
     }
 
+    /**
+     * Loads a plan into the editable form state.
+     *
+     * Notes:
+     * - Calories auto mode is disabled by default in detail editing to avoid unexpected overrides.
+     */
     fun loadToForm(plan: WorkoutPlan) {
         selectedPlan.value = plan
         val type = WorkoutType.fromName(plan.category)
@@ -120,11 +175,18 @@ class ScheduleViewModel @Inject constructor(
             durationMinutes = plan.durationMinutes.toString(),
             estimatedCalories = plan.estimatedCalories.toString(),
             note = plan.note,
-            caloriesAuto = false, // 详情页默认不自动覆盖已有值
+            caloriesAuto = false,
             error = null
         )
     }
 
+    // ---------- Create / update ----------
+
+    /**
+     * Validates input and creates a new workout plan.
+     *
+     * @param onSuccess Callback invoked after the plan is successfully created.
+     */
     fun createPlan(onSuccess: () -> Unit) {
         val f = _form.value
         val durationMin = f.durationMinutes.toIntOrNull()?.takeIf { it > 0 }
@@ -142,7 +204,7 @@ class ScheduleViewModel @Inject constructor(
                 WorkoutPlan(
                     id = 0L,
                     name = f.name.trim(),
-                    category = f.selectedType.name, // ✅ 存 enum name
+                    category = f.selectedType.name, // Persist enum name as stable identifier.
                     durationMinutes = durationMin,
                     estimatedCalories = kcal,
                     note = f.note.trim(),
@@ -156,6 +218,11 @@ class ScheduleViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Validates input and updates an existing workout plan.
+     *
+     * @param onSuccess Callback invoked after the plan is successfully updated.
+     */
     fun updatePlan(onSuccess: () -> Unit) {
         val f = _form.value
         val durationMin = f.durationMinutes.toIntOrNull()?.takeIf { it > 0 }
@@ -186,6 +253,9 @@ class ScheduleViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Starts observing a plan by id and updates [selectedPlan] whenever it changes.
+     */
     fun bindPlanById(id: Long) {
         viewModelScope.launch {
             repository.observePlanById(id).collect { plan ->
@@ -194,7 +264,12 @@ class ScheduleViewModel @Inject constructor(
         }
     }
 
-    // ===== 自动计算 kcal（分钟 -> 秒 -> calculateSeconds）=====
+    // ---------- Helpers ----------
+
+    /**
+     * Recomputes calories only if [PlanFormState.caloriesAuto] is true.
+     * Clears calories if duration is missing/invalid.
+     */
     private fun recomputeCaloriesIfAuto() {
         val f = _form.value
         if (!f.caloriesAuto) return
@@ -210,6 +285,9 @@ class ScheduleViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Computes estimated calories for a plan using the user's profile and a seconds-based calculator.
+     */
     private suspend fun computeCaloriesInt(type: WorkoutType, durationMinutes: Int): Int {
         val profile = repository.observeUserProfile().first()
         val minutes = durationMinutes.coerceAtLeast(1)

@@ -43,6 +43,16 @@ import au.edu.jcu.fittrackplus.domain.model.WorkoutType
 import au.edu.jcu.fittrackplus.ui.i18n.LocalStrings
 import au.edu.jcu.fittrackplus.ui.i18n.localizedName
 
+/**
+ * Schedule list screen.
+ *
+ * Responsibilities (UI only):
+ * - Displays all workout plans.
+ * - Provides per-plan actions: detail, delete, and apply (start workout with preset).
+ * - Shows a snackbar triggered by navigation events (e.g., "SAVED") passed in from NavGraph.
+ *
+ * Business logic and data are managed by [ScheduleViewModel].
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScheduleScreen(
@@ -50,19 +60,27 @@ fun ScheduleScreen(
     onCreate: () -> Unit,
     onDetail: (Long) -> Unit,
     onApply: (presetTypeName: String, presetMinutes: Int) -> Unit,
-
-    // snack event from NavGraph (e.g. "SAVED")
+    /**
+     * Snackbar event key passed from NavGraph via SavedStateHandle.
+     * Example: "SAVED" indicates a workout record was saved after running a plan.
+     */
     snackKey: String = "",
+    /**
+     * Callback to clear/consume the snackbar event key once it has been displayed.
+     */
     onSnackConsumed: () -> Unit = {},
-
     vm: ScheduleViewModel = hiltViewModel()
 ) {
     val s = LocalStrings.current
     val isZh = s.isZh
+
+    // Plans list is observed from the ViewModel.
     val plans by vm.plans.collectAsState(initial = emptyList())
 
+    // Schedule screen owns its own snackbar host.
     val snack = remember { SnackbarHostState() }
 
+    // Display snackbar for one-shot navigation events and then consume the event.
     LaunchedEffect(snackKey) {
         if (snackKey == "SAVED") {
             snack.showSnackbar(s.savedToHistory)
@@ -76,6 +94,7 @@ fun ScheduleScreen(
                 title = { Text(s.scheduleTitle) },
                 navigationIcon = { TextButton(onClick = onBack) { Text(s.back) } },
                 actions = {
+                    // Primary action: create a new plan.
                     FilledIconButton(
                         onClick = onCreate,
                         shape = CircleShape
@@ -107,6 +126,13 @@ fun ScheduleScreen(
     }
 }
 
+/**
+ * Single plan row rendered as a card.
+ *
+ * Layout:
+ * - Left: plan information (name, type/duration/calories, optional note preview).
+ * - Right: compact action buttons (detail, delete, apply).
+ */
 @Composable
 private fun PlanCard(
     plan: WorkoutPlan,
@@ -117,6 +143,7 @@ private fun PlanCard(
 ) {
     val s = LocalStrings.current
 
+    // plan.category stores WorkoutType.name (e.g., "RUNNING").
     val type = WorkoutType.fromName(plan.category)
     val typeLabel = type.localizedName(isZh)
 
@@ -131,7 +158,7 @@ private fun PlanCard(
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left: main info
+            // Left: main plan content.
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = plan.name,
@@ -139,13 +166,13 @@ private fun PlanCard(
                     fontWeight = FontWeight.SemiBold
                 )
 
-                // Secondary line: type + duration + kcal
+                // Secondary summary line.
                 Text(
                     text = "$typeLabel • ${plan.durationMinutes} min • ${plan.estimatedCalories} kcal",
                     style = MaterialTheme.typography.bodyMedium
                 )
 
-                // Optional note preview (small, only when not blank)
+                // Optional note preview.
                 if (plan.note.isNotBlank()) {
                     Text(
                         text = plan.note,
@@ -155,34 +182,38 @@ private fun PlanCard(
                 }
             }
 
-            // Right: actions (3 round buttons)
+            // Right: action buttons.
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 RoundActionButton(
                     onClick = onDetail,
-                    contentDescription = s.detail,
+                    contentDescription = s.detail
                 ) { Icon(Icons.Default.Info, contentDescription = null) }
 
                 RoundActionButton(
                     onClick = onDelete,
-                    contentDescription = s.delete,
+                    contentDescription = s.delete
                 ) { Icon(Icons.Default.Delete, contentDescription = null) }
 
                 RoundActionButton(
                     onClick = onApply,
-                    contentDescription = s.apply,
+                    contentDescription = s.apply
                 ) { Icon(Icons.Default.PlayArrow, contentDescription = null) }
             }
         }
     }
 }
 
+/**
+ * A compact circular icon button used for per-item actions.
+ *
+ * Uses `secondaryContainer` colors to create a subtle, app-like action background.
+ */
 @Composable
 private fun RoundActionButton(
     onClick: () -> Unit,
     contentDescription: String,
     content: @Composable () -> Unit
 ) {
-    // A subtle filled background using secondaryContainer so it looks like an app UI
     FilledIconButton(
         onClick = onClick,
         shape = CircleShape,

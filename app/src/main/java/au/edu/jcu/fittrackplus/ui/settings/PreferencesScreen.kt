@@ -37,12 +37,16 @@ fun PreferencesScreen(
     vm: PreferencesViewModel = hiltViewModel()
 ) {
     val s = LocalStrings.current
+
+    // Collect the current preferences from the ViewModel with lifecycle awareness.
     val prefs by vm.prefs.collectAsStateWithLifecycle()
 
+    // Dropdown expansion states (persisted across configuration changes).
     var langExpanded by rememberSaveable { mutableStateOf(false) }
     var themeExpanded by rememberSaveable { mutableStateOf(false) }
 
-    // Display
+    // Human-friendly display values for current selections.
+    // Note: Stored values remain stable keys (e.g., "EN"/"ZH", "LIGHT"/"DARK").
     val langDisplay = if (prefs.language == "ZH") "中文" else "English"
     val themeDisplay = if (prefs.theme == "DARK") s.dark else s.light
 
@@ -62,12 +66,15 @@ fun PreferencesScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
 
+            // Lightweight helper copy for the page header.
+            // (UI text only; does not affect any preference logic.)
             Text(
                 text = if (s.isZh) "选择语言与主题偏好" else "Choose language & theme preferences",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
+            // Settings container card (visual grouping only).
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -79,17 +86,21 @@ fun PreferencesScreen(
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
 
-                    // ---- Language ----
+                    // -----------------------------
+                    // Language dropdown (read-only field + click overlay).
+                    // IMPORTANT: enabled=true keeps the normal outlined border style.
+                    // -----------------------------
                     Box {
                         OutlinedTextField(
                             value = langDisplay,
                             onValueChange = {},
                             readOnly = true,
-                            enabled = true, // ✅ 黑边框
+                            enabled = true, // Keep a normal outlined border (avoid "disabled" grey styling).
                             label = { Text(s.language) },
                             modifier = Modifier.fillMaxWidth()
                         )
 
+                        // Transparent overlay captures taps without making the TextField editable.
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
@@ -103,6 +114,7 @@ fun PreferencesScreen(
                             DropdownMenuItem(
                                 text = { Text("中文") },
                                 onClick = {
+                                    // Persist language using stable keys.
                                     vm.setLanguage("ZH")
                                     langExpanded = false
                                 }
@@ -117,17 +129,21 @@ fun PreferencesScreen(
                         }
                     }
 
-                    // ---- Theme ----
+                    // -----------------------------
+                    // Theme dropdown (read-only field + click overlay).
+                    // IMPORTANT: enabled=true keeps the normal outlined border style.
+                    // -----------------------------
                     Box {
                         OutlinedTextField(
                             value = themeDisplay,
                             onValueChange = {},
                             readOnly = true,
-                            enabled = true, // ✅ 黑边框
+                            enabled = true, // Keep a normal outlined border (avoid "disabled" grey styling).
                             label = { Text(s.theme) },
                             modifier = Modifier.fillMaxWidth()
                         )
 
+                        // Transparent overlay captures taps without making the TextField editable.
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
@@ -141,6 +157,7 @@ fun PreferencesScreen(
                             DropdownMenuItem(
                                 text = { Text(s.light) },
                                 onClick = {
+                                    // Persist theme using stable keys.
                                     vm.setTheme("LIGHT")
                                     themeExpanded = false
                                 }
@@ -157,6 +174,7 @@ fun PreferencesScreen(
                 }
             }
 
+            // Additional hint text (UI-only).
             Text(
                 text = if (s.isZh)
                     "提示：主题与语言会保存到偏好设置。"

@@ -9,8 +9,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+/**
+ * A simple clickable card used as an entry point to a feature screen.
+ *
+ * Typical usage:
+ * - Settings menu items (Profile, Preferences, Workout Type Management)
+ * - Any lightweight navigation list where each row is a card
+ *
+ * Note:
+ * - This component only handles UI rendering and click forwarding.
+ * - Navigation logic should remain outside (passed via [onClick]).
+ */
 @Composable
-fun FeatureEntryCard(title: String, onClick: () -> Unit) {
+fun FeatureEntryCard(
+    title: String,
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
