@@ -1,4 +1,4 @@
-**# Utility App Starter – CP3406 / CP5307
+### Utility App Starter – CP3406 / CP5307
 
 This is a basic Android app template for **Assessment 1: Utility App** in CP3406/CP5603..  
 It provides the structure for a simple tabular UI using **Jetpack Compose** and **Material Design 3**.
