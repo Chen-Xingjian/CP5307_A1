@@ -1,4 +1,4 @@
-# FitTrack+ (CP3406 Utility App)
+# FitTrack+ (CP5307 Utility App)
 
 FitTrack+ is a lightweight fitness utility app built with **Android (Kotlin)** and **Jetpack Compose**.  
 It helps users quickly start a workout timer, track workout history, manage workout plans, and customize workout types, language, and theme.
