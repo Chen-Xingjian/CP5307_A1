@@ -121,25 +121,36 @@ fun FitTrackNavGraph() {
                 }) { Text(if (s.isZh) "继续" else "Continue") }
             },
             dismissButton = {
+                // ✅ FIXED: Exit should respect the clicked tab first
                 TextButton(onClick = {
+                    // 1) stop workout without saving
                     discardWorkout?.invoke()
 
                     val targetTab = pendingTabRoute
+
+                    // close dialog
                     showLeaveDialog = false
                     pendingTabRoute = null
 
-                    val target = if (returnToKey == 1) Routes.SCHEDULE_LIST else targetTab
+                    // 2) IMPORTANT: clear blocking flags, otherwise you get stuck
+                    workoutBlocking = false
+                    returnToKey = 0
 
-                    when (target) {
-                        Routes.SETTINGS -> navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
-
-                        Routes.SCHEDULE_LIST -> {
-                            val popped = navController.popBackStack(Routes.SCHEDULE_LIST, false)
-                            if (!popped) navController.navigate(Routes.SCHEDULE_LIST) { launchSingleTop = true }
+                    // 3) If user explicitly clicked HOME/SETTINGS -> go there
+                    when (targetTab) {
+                        Routes.HOME -> {
+                            navController.navigate(Routes.HOME_DEFAULT) { launchSingleTop = true }
+                            return@TextButton
                         }
 
-                        else -> navController.navigate(Routes.HOME_DEFAULT) { launchSingleTop = true }
+                        Routes.SETTINGS -> {
+                            navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
+                            return@TextButton
+                        }
                     }
+
+                    // 4) No explicit tab intent -> fallback (rare)
+                    navController.navigate(Routes.HOME_DEFAULT) { launchSingleTop = true }
                 }) { Text(if (s.isZh) "退出" else "Exit") }
             }
         )
@@ -209,17 +220,17 @@ fun FitTrackNavGraph() {
 
                     returnToRoute = if (key == 1) Routes.SCHEDULE_LIST else "",
 
-                    // ✅ 关键：如果返回 schedule/list，把 snackbar 事件写到 schedule 的 savedStateHandle
+                    // ✅ 只负责导航：不再写 SAVED
                     onNavigateBack = { target ->
-                        if (target == Routes.SCHEDULE_LIST) {
-                            runCatching {
-                                navController.getBackStackEntry(Routes.SCHEDULE_LIST)
-                                    .savedStateHandle["snack"] = "SAVED"
-                            }
-                            navController.popBackStack(Routes.SCHEDULE_LIST, false)
-                        } else {
-                            val popped = navController.popBackStack(target, false)
-                            if (!popped) navController.navigate(target) { launchSingleTop = true }
+                        val popped = navController.popBackStack(target, false)
+                        if (!popped) navController.navigate(target) { launchSingleTop = true }
+                    },
+
+                    // ✅ 只有“真正保存成功”才写 SAVED 给 Schedule
+                    onPlanSaved = {
+                        runCatching {
+                            navController.getBackStackEntry(Routes.SCHEDULE_LIST)
+                                .savedStateHandle["snack"] = "SAVED"
                         }
                     },
 
@@ -244,11 +255,8 @@ fun FitTrackNavGraph() {
             composable(Routes.SETTINGS_TYPES) { WorkoutTypeManageScreen(onBack = { navController.popBackStack() }) }
             composable(Routes.SETTINGS_PREFS) { PreferencesScreen(onBack = { navController.popBackStack() }) }
 
-            // ✅ Schedule list：读取 savedStateHandle 的 snack 事件
             composable(Routes.SCHEDULE_LIST) { entry ->
-                val snackKeyFlow = remember(entry) {
-                    entry.savedStateHandle.getStateFlow("snack", "")
-                }
+                val snackKeyFlow = remember(entry) { entry.savedStateHandle.getStateFlow("snack", "") }
                 val snackKey by snackKeyFlow.collectAsState()
 
                 ScheduleScreen(
@@ -256,6 +264,8 @@ fun FitTrackNavGraph() {
                     onCreate = { navController.navigate(Routes.SCHEDULE_CREATE) },
                     onDetail = { id -> navController.navigate(Routes.scheduleDetail(id)) },
                     onApply = { type, mins ->
+                        // ✅ 每次 apply 前清掉旧 snack，避免残留
+                        entry.savedStateHandle["snack"] = ""
                         navController.navigate(Routes.homeWithPreset(type, mins)) { launchSingleTop = true }
                     },
                     snackKey = snackKey,
@@ -263,9 +273,7 @@ fun FitTrackNavGraph() {
                 )
             }
 
-            composable(Routes.SCHEDULE_CREATE) {
-                ScheduleCreateScreen(onBack = { navController.popBackStack() })
-            }
+            composable(Routes.SCHEDULE_CREATE) { ScheduleCreateScreen(onBack = { navController.popBackStack() }) }
 
             composable(
                 route = Routes.SCHEDULE_DETAIL,
@@ -275,9 +283,7 @@ fun FitTrackNavGraph() {
                 ScheduleDetailScreen(planId = id, onBack = { navController.popBackStack() })
             }
 
-            composable(Routes.HISTORY) {
-                HistoryScreen(onBack = { navController.popBackStack() })
-            }
+            composable(Routes.HISTORY) { HistoryScreen(onBack = { navController.popBackStack() }) }
         }
     }
 }

@@ -7,8 +7,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -63,84 +66,103 @@ fun ProfileSettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(inner)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            OutlinedTextField(
-                value = ui.name,
-                onValueChange = vm::setName,
-                label = { Text(s.name) },
-                modifier = Modifier.fillMaxWidth()
+
+            Text(
+                text = if (s.isZh) "完善资料用于更准确的消耗估算" else "Complete your profile for better calorie estimation",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            // ✅ gender dropdown：保持黑边框（enabled=true），但不可输入（readOnly=true）
-            Box {
-                val currentGender = ui.gender.ifBlank { "male" }
-
-                OutlinedTextField(
-                    value = genderDisplay(currentGender),
-                    onValueChange = {},
-                    readOnly = true,
-                    enabled = true, // ✅ 关键：不要 false
-                    label = { Text(s.gender) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // 覆盖层接管点击
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable { genderExpanded = true }
-                )
-
-                DropdownMenu(
-                    expanded = genderExpanded,
-                    onDismissRequest = { genderExpanded = false }
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    genderOptions.forEach { g ->
-                        DropdownMenuItem(
-                            text = { Text(genderDisplay(g)) },
-                            onClick = {
-                                vm.setGender(g) // 保存仍用 "male/female/other"
-                                genderExpanded = false
-                            }
+
+                    OutlinedTextField(
+                        value = ui.name,
+                        onValueChange = vm::setName,
+                        label = { Text(s.name) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // ✅ Gender dropdown：黑边框 + 不可输入 + 可点击展开
+                    Box {
+                        val currentGender = ui.gender.ifBlank { "male" }
+
+                        OutlinedTextField(
+                            value = genderDisplay(currentGender),
+                            onValueChange = {},
+                            readOnly = true,
+                            enabled = true, // ✅ 黑边框
+                            label = { Text(s.gender) },
+                            modifier = Modifier.fillMaxWidth()
                         )
+
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable { genderExpanded = true }
+                        )
+
+                        DropdownMenu(
+                            expanded = genderExpanded,
+                            onDismissRequest = { genderExpanded = false }
+                        ) {
+                            genderOptions.forEach { g ->
+                                DropdownMenuItem(
+                                    text = { Text(genderDisplay(g)) },
+                                    onClick = {
+                                        vm.setGender(g) // 存的仍是 male/female/other
+                                        genderExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = ui.age,
+                        onValueChange = vm::setAge,
+                        label = { Text(s.age) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = ui.heightCm,
+                        onValueChange = vm::setHeightCm,
+                        label = { Text(s.heightCm) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = ui.weightKg,
+                        onValueChange = vm::setWeightKg,
+                        label = { Text(s.weightKg) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    ui.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    ui.message?.let { Text(it) }
+
+                    Button(
+                        onClick = vm::saveProfile,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(s.save)
                     }
                 }
-            }
-
-            OutlinedTextField(
-                value = ui.age,
-                onValueChange = vm::setAge,
-                label = { Text(s.age) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            OutlinedTextField(
-                value = ui.heightCm,
-                onValueChange = vm::setHeightCm,
-                label = { Text(s.heightCm) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            OutlinedTextField(
-                value = ui.weightKg,
-                onValueChange = vm::setWeightKg,
-                label = { Text(s.weightKg) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            ui.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            ui.message?.let { Text(it) }
-
-            Button(
-                onClick = vm::saveProfile,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(s.save)
             }
         }
     }

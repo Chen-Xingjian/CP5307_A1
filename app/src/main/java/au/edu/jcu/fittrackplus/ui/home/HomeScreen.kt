@@ -12,9 +12,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import au.edu.jcu.fittrackplus.ui.components.ClickableOutlinedField
+import au.edu.jcu.fittrackplus.ui.components.FitTrackCard
+import au.edu.jcu.fittrackplus.ui.components.FitTrackScreen
 import au.edu.jcu.fittrackplus.ui.i18n.LocalStrings
 import au.edu.jcu.fittrackplus.ui.i18n.localizedName
 
@@ -30,6 +34,9 @@ fun HomeScreen(
     returnToRoute: String = "",
 
     onNavigateBack: (String) -> Unit,
+
+    // ✅ NEW: only called when a plan-started workout is actually saved
+    onPlanSaved: () -> Unit,
 
     onWorkoutActiveChange: (Boolean) -> Unit,
     onReturnToRouteChange: (String) -> Unit,
@@ -50,7 +57,6 @@ fun HomeScreen(
     var showExitDialog by rememberSaveable { mutableStateOf(false) }
     var showCategoryHint by rememberSaveable { mutableStateOf(false) }
 
-    // ✅ 计划 autostart 只允许触发一次
     var autoStartConsumed by rememberSaveable(
         presetTypeName,
         presetMinutes,
@@ -61,20 +67,17 @@ fun HomeScreen(
         onReturnToRouteChange(returnToRoute)
     }
 
-    // ✅ 只在 RUNNING/PAUSED 才算“运动中”
     LaunchedEffect(state.phase) {
         val active = state.phase == WorkoutPhase.RUNNING || state.phase == WorkoutPhase.PAUSED
         onWorkoutActiveChange(active)
     }
 
-    // ✅ 注册 pause / resume / discard handler 给 NavGraph
     LaunchedEffect(Unit) {
         registerPauseHandler { vm.pauseForLeave() }
         registerResumeHandler { vm.resumeForLeave() }
         registerDiscardHandler { vm.discardAndReset() }
     }
 
-    // ✅ preset 自动开始（只触发一次）
     LaunchedEffect(autoStart, presetTypeName, presetMinutes, autoStartConsumed) {
         if (!autoStart) return@LaunchedEffect
         if (autoStartConsumed) return@LaunchedEffect
@@ -85,13 +88,16 @@ fun HomeScreen(
     }
 
     /**
-     * ✅ 关键修复：
-     * - 来自 schedule（returnToRoute != ""）的保存：不要在 Home 弹 snackbar
-     * - 立刻回到 schedule，并清掉 toast key，避免回到 IDLE 又触发逻辑
+     * ✅ FIX:
+     * - If coming from schedule (returnToRoute != ""), and saved:
+     *   1) fire onPlanSaved() to let NavGraph show snackbar in Schedule
+     *   2) clear toast
+     *   3) immediately navigate back (no snackbar on Home)
      */
     LaunchedEffect(state.lastSavedMessage) {
         state.lastSavedMessage?.let { key ->
             if (key == "SAVED" && returnToRoute.isNotBlank()) {
+                onPlanSaved()
                 vm.clearToast()
                 onNavigateBack(returnToRoute)
                 return@LaunchedEffect
@@ -107,7 +113,6 @@ fun HomeScreen(
         }
     }
 
-    // ✅ Exit dialog（STOPPED 后点击 Exit）
     if (showExitDialog) {
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
@@ -138,12 +143,8 @@ fun HomeScreen(
         )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(12.dp)
-    ) {
-        // ✅ 运动中隐藏顶部 Schedule/History
+    FitTrackScreen {
+        // 顶部快捷入口：只在 IDLE 显示
         if (state.isIdle) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -152,51 +153,50 @@ fun HomeScreen(
                 TextButton(onClick = onGoSchedule) { Text(s.schedule) }
                 TextButton(onClick = onGoHistory) { Text(s.history) }
             }
-            Spacer(Modifier.height(18.dp))
-        } else {
-            Spacer(Modifier.height(6.dp))
         }
 
         if (state.isIdle) {
-            // ===== IDLE =====
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(8.dp))
 
+            // Quick Start button
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
                 Card(
-                    modifier = Modifier.size(200.dp).clip(CircleShape)
+                    modifier = Modifier
+                        .size(220.dp)
+                        .clip(CircleShape),
+                    shape = CircleShape,
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Box(
-                        modifier = Modifier.fillMaxSize().clickable { vm.startQuick() },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable { vm.startQuick() },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = s.quickStart,
+                            textAlign = TextAlign.Center,
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.headlineMedium
                         )
                     }
                 }
+            }
 
-                Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(12.dp))
 
-                // category + hint
-                Row(
-                    modifier = Modifier.fillMaxWidth(0.75f),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+            FitTrackCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.weight(1f)) {
-                        OutlinedTextField(
+                        ClickableOutlinedField(
                             value = state.selectedCategory.localizedName(isZh),
-                            onValueChange = {},
-                            readOnly = true,
-                            enabled = true, // ✅ 关键：不要 disabled，否则会变灰框
-                            label = { Text(s.category) },
-                            modifier = Modifier.fillMaxWidth()
+                            label = s.category,
+                            onClick = { categoryExpanded = true }
                         )
-                        Box(Modifier.matchParentSize().clickable { categoryExpanded = true })
+
                         DropdownMenu(
                             expanded = categoryExpanded,
                             onDismissRequest = { categoryExpanded = false }
@@ -204,28 +204,29 @@ fun HomeScreen(
                             state.categoryOptions.forEach { t ->
                                 DropdownMenuItem(
                                     text = { Text(t.localizedName(isZh)) },
-                                    onClick = { vm.onCategoryChange(t); categoryExpanded = false }
+                                    onClick = {
+                                        vm.onCategoryChange(t)
+                                        categoryExpanded = false
+                                    }
                                 )
                             }
                         }
                     }
 
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(10.dp))
+
                     Text(
                         text = "ⓘ",
                         modifier = Modifier
                             .clip(CircleShape)
                             .clickable { showCategoryHint = true }
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
 
-                Spacer(Modifier.height(12.dp))
-
-                // Hour / Min input
                 Row(
-                    modifier = Modifier.fillMaxWidth(0.75f),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     OutlinedTextField(
@@ -247,60 +248,78 @@ fun HomeScreen(
                         modifier = Modifier.weight(1f)
                     )
                 }
-
-                Spacer(Modifier.height(24.dp))
-                SnackbarHost(hostState = snack)
             }
+
+            Spacer(Modifier.height(8.dp))
+            SnackbarHost(hostState = snack)
         } else {
-            // ===== RUNNING/PAUSED/STOPPED =====
-            Column(
+            // Workout running UI (center)
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = 10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(bottom = 8.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Spacer(Modifier.height(26.dp))
+                FitTrackCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = state.selectedCategory.localizedName(isZh),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
 
-                Text(
-                    text = state.selectedCategory.localizedName(isZh),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                    Text(
+                        text = "${s.time}: ${formatHHmmss(displaySeconds(state))}",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
 
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    text = "${s.time}: ${formatHHmmss(displaySeconds(state))}",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                    Spacer(Modifier.height(6.dp))
 
-                Spacer(Modifier.height(28.dp))
+                    if (state.phase == WorkoutPhase.RUNNING || state.phase == WorkoutPhase.PAUSED) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = { if (state.isRunning) vm.pause() else vm.resume() },
+                                enabled = state.canControl,
+                                modifier = Modifier.weight(1f)
+                            ) { Text(if (state.isRunning) s.pause else s.start) }
 
-                if (state.phase == WorkoutPhase.RUNNING || state.phase == WorkoutPhase.PAUSED) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(
-                            onClick = { if (state.isRunning) vm.pause() else vm.resume() },
-                            enabled = state.canControl
-                        ) { Text(if (state.isRunning) s.pause else s.start) }
+                            Button(
+                                onClick = vm::stop,
+                                enabled = state.canControl,
+                                modifier = Modifier.weight(1f)
+                            ) { Text(s.stop) }
+                        }
+                    }
 
-                        Button(
-                            onClick = vm::stop,
-                            enabled = state.canControl
-                        ) { Text(s.stop) }
+                    if (state.isStopped) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = vm::saveAndReset,
+                                modifier = Modifier.weight(1f)
+                            ) { Text(s.save) }
+
+                            Button(
+                                onClick = { showExitDialog = true },
+                                modifier = Modifier.weight(1f)
+                            ) { Text(s.exit) }
+                        }
                     }
                 }
-
-                if (state.isStopped) {
-                    Spacer(Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = vm::saveAndReset) { Text(s.save) }
-                        Button(onClick = { showExitDialog = true }) { Text(s.exit) }
-                    }
-                }
-
-                Spacer(Modifier.height(24.dp))
-                SnackbarHost(hostState = snack)
             }
+
+            SnackbarHost(hostState = snack)
         }
     }
 }

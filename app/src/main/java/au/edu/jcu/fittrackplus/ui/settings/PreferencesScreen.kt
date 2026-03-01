@@ -7,9 +7,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -38,10 +42,8 @@ fun PreferencesScreen(
     var langExpanded by rememberSaveable { mutableStateOf(false) }
     var themeExpanded by rememberSaveable { mutableStateOf(false) }
 
-    // Language 显示：中文/English 更直观
+    // Display
     val langDisplay = if (prefs.language == "ZH") "中文" else "English"
-
-    // Theme 显示：用 i18n
     val themeDisplay = if (prefs.theme == "DARK") s.dark else s.light
 
     Scaffold(
@@ -56,86 +58,113 @@ fun PreferencesScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(inner)
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
 
-            // ---- Language ----
-            Box {
-                OutlinedTextField(
-                    value = langDisplay,
-                    onValueChange = {},
-                    readOnly = true,
-                    enabled = true, // ✅ 关键：保持正常黑边框样式
-                    label = { Text(s.language) },
-                    modifier = Modifier.fillMaxWidth()
-                )
+            Text(
+                text = if (s.isZh) "选择语言与主题偏好" else "Choose language & theme preferences",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
-                // 覆盖透明点击层：点击展开
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable { langExpanded = true }
-                )
-
-                DropdownMenu(
-                    expanded = langExpanded,
-                    onDismissRequest = { langExpanded = false }
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("中文") },
-                        onClick = {
-                            vm.setLanguage("ZH")
-                            langExpanded = false
+
+                    // ---- Language ----
+                    Box {
+                        OutlinedTextField(
+                            value = langDisplay,
+                            onValueChange = {},
+                            readOnly = true,
+                            enabled = true, // ✅ 黑边框
+                            label = { Text(s.language) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable { langExpanded = true }
+                        )
+
+                        DropdownMenu(
+                            expanded = langExpanded,
+                            onDismissRequest = { langExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("中文") },
+                                onClick = {
+                                    vm.setLanguage("ZH")
+                                    langExpanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("English") },
+                                onClick = {
+                                    vm.setLanguage("EN")
+                                    langExpanded = false
+                                }
+                            )
                         }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("English") },
-                        onClick = {
-                            vm.setLanguage("EN")
-                            langExpanded = false
+                    }
+
+                    // ---- Theme ----
+                    Box {
+                        OutlinedTextField(
+                            value = themeDisplay,
+                            onValueChange = {},
+                            readOnly = true,
+                            enabled = true, // ✅ 黑边框
+                            label = { Text(s.theme) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable { themeExpanded = true }
+                        )
+
+                        DropdownMenu(
+                            expanded = themeExpanded,
+                            onDismissRequest = { themeExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(s.light) },
+                                onClick = {
+                                    vm.setTheme("LIGHT")
+                                    themeExpanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(s.dark) },
+                                onClick = {
+                                    vm.setTheme("DARK")
+                                    themeExpanded = false
+                                }
+                            )
                         }
-                    )
+                    }
                 }
             }
 
-            // ---- Theme ----
-            Box {
-                OutlinedTextField(
-                    value = themeDisplay,
-                    onValueChange = {},
-                    readOnly = true,
-                    enabled = true, // ✅ 关键：保持正常黑边框样式
-                    label = { Text(s.theme) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable { themeExpanded = true }
-                )
-
-                DropdownMenu(
-                    expanded = themeExpanded,
-                    onDismissRequest = { themeExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(s.light) },
-                        onClick = {
-                            vm.setTheme("LIGHT")
-                            themeExpanded = false
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(s.dark) },
-                        onClick = {
-                            vm.setTheme("DARK")
-                            themeExpanded = false
-                        }
-                    )
-                }
-            }
+            Text(
+                text = if (s.isZh)
+                    "提示：主题与语言会保存到偏好设置。"
+                else
+                    "Tip: Language & theme will be saved to preferences.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
