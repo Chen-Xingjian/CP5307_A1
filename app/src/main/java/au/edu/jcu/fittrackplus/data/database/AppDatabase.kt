@@ -2,23 +2,20 @@ package au.edu.jcu.fittrackplus.data.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
-import au.edu.jcu.fittrackplus.data.dao.AppointmentDao
-import au.edu.jcu.fittrackplus.data.dao.RecordDao
-import au.edu.jcu.fittrackplus.data.dao.UserDao
-import au.edu.jcu.fittrackplus.data.dao.WorkoutPlanDao
-import au.edu.jcu.fittrackplus.data.entity.AppointmentEntity
-import au.edu.jcu.fittrackplus.data.entity.UserEntity
-import au.edu.jcu.fittrackplus.data.entity.WorkoutPlanEntity
-import au.edu.jcu.fittrackplus.data.entity.WorkoutRecordEntity
+import au.edu.jcu.fittrackplus.data.dao.*
+import au.edu.jcu.fittrackplus.data.entity.*
 
 @Database(
     entities = [
         UserEntity::class,
         WorkoutRecordEntity::class,
         AppointmentEntity::class,
-        WorkoutPlanEntity::class
+        WorkoutPlanEntity::class,
+
+        WorkoutTypeSettingEntity::class,
+        AppPreferenceEntity::class
     ],
-    version = 2,
+    version = 4, // 记得 +1
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -26,4 +23,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun recordDao(): RecordDao
     abstract fun appointmentDao(): AppointmentDao
     abstract fun workoutPlanDao(): WorkoutPlanDao
+
+    abstract fun workoutTypeSettingDao(): WorkoutTypeSettingDao
+    abstract fun appPreferenceDao(): AppPreferenceDao
 }

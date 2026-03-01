@@ -22,4 +22,7 @@ interface WorkoutPlanDao {
 
     @Update
     suspend fun update(plan: WorkoutPlanEntity)
+
+    @Query("DELETE FROM workout_plan WHERE id = :id")
+    suspend fun deleteById(id: Long)
 }

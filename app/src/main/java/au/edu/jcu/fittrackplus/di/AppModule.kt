@@ -9,6 +9,8 @@ import au.edu.jcu.fittrackplus.data.dao.WorkoutPlanDao
 import au.edu.jcu.fittrackplus.data.database.AppDatabase
 import au.edu.jcu.fittrackplus.data.repository.FitTrackRepositoryImpl
 import au.edu.jcu.fittrackplus.domain.repository.FitTrackRepository
+import au.edu.jcu.fittrackplus.data.dao.WorkoutTypeSettingDao
+import au.edu.jcu.fittrackplus.data.dao.AppPreferenceDao
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -47,4 +49,11 @@ object DatabaseModule {
 
     @Provides
     fun provideWorkoutPlanDao(db: AppDatabase): WorkoutPlanDao = db.workoutPlanDao()
+
+    @Provides
+    fun provideWorkoutTypeSettingDao(db: AppDatabase): WorkoutTypeSettingDao = db.workoutTypeSettingDao()
+
+    @Provides
+    fun provideAppPreferenceDao(db: AppDatabase): AppPreferenceDao = db.appPreferenceDao()
+
 }

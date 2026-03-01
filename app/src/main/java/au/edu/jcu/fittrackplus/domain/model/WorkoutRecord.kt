@@ -5,7 +5,7 @@ data class WorkoutRecord(
     val workoutType: WorkoutType,
     val startTimeMillis: Long,
     val endTimeMillis: Long,
-    val durationMinutes: Int,
-    val calories: Double,
+    val durationSeconds: Long,
+    val calories: Int,
     val note: String = ""
 )

@@ -9,7 +9,7 @@ data class WorkoutRecordEntity(
     val workoutType: String,
     val startTimeMillis: Long,
     val endTimeMillis: Long,
-    val durationMinutes: Int,
-    val calories: Double,
+    val durationSeconds: Long,
+    val calories: Int,
     val note: String
 )

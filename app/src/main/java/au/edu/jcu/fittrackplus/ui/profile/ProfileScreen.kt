@@ -1,44 +1,68 @@
 package au.edu.jcu.fittrackplus.ui.profile
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import au.edu.jcu.fittrackplus.ui.i18n.LocalStrings
 
 @Composable
 fun ProfileContent(
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
+    val s = LocalStrings.current
     val ui by viewModel.ui.collectAsStateWithLifecycle()
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(ui.name, viewModel::setName, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(ui.gender, viewModel::setGender, label = { Text("Gender") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(
-            ui.age, viewModel::setAge,
-            label = { Text("Age") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            value = ui.name,
+            onValueChange = viewModel::setName,
+            label = { Text(s.name) },
             modifier = Modifier.fillMaxWidth()
         )
+
         OutlinedTextField(
-            ui.heightCm, viewModel::setHeightCm,
-            label = { Text("Height(cm)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            value = ui.gender,
+            onValueChange = viewModel::setGender,
+            label = { Text(s.gender) },
             modifier = Modifier.fillMaxWidth()
         )
+
         OutlinedTextField(
-            ui.weightKg, viewModel::setWeightKg,
-            label = { Text("Weight(kg)") },
+            value = ui.age,
+            onValueChange = viewModel::setAge,
+            label = { Text(s.age) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
 
-        Button(onClick = viewModel::saveProfile) { Text("Save Profile") }
+        OutlinedTextField(
+            value = ui.heightCm,
+            onValueChange = viewModel::setHeightCm,
+            label = { Text(s.heightCm) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = ui.weightKg,
+            onValueChange = viewModel::setWeightKg,
+            label = { Text(s.weightKg) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Button(onClick = viewModel::saveProfile) { Text(s.save) }
 
         ui.message?.let { Text(it) }
     }

@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface RecordDao {
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecord(record: WorkoutRecordEntity)
 
@@ -18,4 +17,7 @@ interface RecordDao {
 
     @Query("SELECT * FROM workout_records ORDER BY startTimeMillis DESC LIMIT 1")
     fun observeLatestRecord(): Flow<WorkoutRecordEntity?>
+
+    @Query("DELETE FROM workout_records WHERE id = :id")
+    suspend fun deleteById(id: Long)
 }

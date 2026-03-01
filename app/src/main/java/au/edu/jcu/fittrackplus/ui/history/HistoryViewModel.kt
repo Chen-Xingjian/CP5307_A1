@@ -6,53 +6,95 @@ import au.edu.jcu.fittrackplus.domain.model.WorkoutRecord
 import au.edu.jcu.fittrackplus.domain.model.WorkoutType
 import au.edu.jcu.fittrackplus.domain.repository.FitTrackRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import java.util.Calendar
 import javax.inject.Inject
 
 data class HistoryUiState(
-    val allRecords: List<WorkoutRecord> = emptyList(),
     val filteredRecords: List<WorkoutRecord> = emptyList(),
-    val selectedType: WorkoutType? = null
-)
+    val availableTypes: List<WorkoutType> = emptyList(),
+    val selectedType: WorkoutType? = null,    // null = Select All
+    val selectedDayKey: Int? = null,          // null = Select All (yyyyMMdd)
+    val selectedIds: Set<Long> = emptySet()
+) {
+    val selectedCount: Int get() = selectedIds.size
+}
 
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
-    repository: FitTrackRepository
+    private val repository: FitTrackRepository
 ) : ViewModel() {
 
-    private val selectedTypeFlow = MutableStateFlow<WorkoutType?>(null)
+    private val selectedType = MutableStateFlow<WorkoutType?>(null)
+    private val selectedDayKey = MutableStateFlow<Int?>(null)
+    private val selectedIds = MutableStateFlow<Set<Long>>(emptySet())
 
     val ui: StateFlow<HistoryUiState> =
         combine(
             repository.observeAllRecords(),
-            selectedTypeFlow
-        ) { all, selectedType ->
-            val filtered = if (selectedType == null) {
-                all
-            } else {
-                all.filter { it.workoutType == selectedType }
+            selectedType,
+            selectedDayKey,
+            selectedIds
+        ) { all, type, dayKey, ids ->
+            val sorted = all.sortedByDescending { it.startTimeMillis }
+
+            val types = sorted.map { it.workoutType }.distinct().sortedBy { it.name }
+
+            val filtered = sorted.filter { r ->
+                val okType = type == null || r.workoutType == type
+                val okDay = dayKey == null || r.dayKey() == dayKey
+                okType && okDay
             }
 
             HistoryUiState(
-                allRecords = all,
                 filteredRecords = filtered,
-                selectedType = selectedType
+                availableTypes = types,
+                selectedType = type,
+                selectedDayKey = dayKey,
+                selectedIds = ids
             )
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = HistoryUiState()
-        )
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HistoryUiState())
 
-    fun filterByType(type: WorkoutType?) {
-        selectedTypeFlow.value = type
+    fun setTypeFilter(type: WorkoutType?) {
+        selectedType.value = type
     }
 
-    fun resetFilter() {
-        selectedTypeFlow.value = null
+    fun setDayFilter(dayKey: Int?) {
+        selectedDayKey.value = dayKey
     }
+
+    fun toggleSelection(id: Long) {
+        val cur = selectedIds.value
+        selectedIds.value = if (cur.contains(id)) cur - id else cur + id
+    }
+
+    fun clearSelection() {
+        selectedIds.value = emptySet()
+    }
+
+    fun deleteSelected() {
+        val ids = selectedIds.value.toList()
+        if (ids.isEmpty()) return
+
+        viewModelScope.launch {
+            ids.forEach { repository.deleteRecordById(it) }
+            selectedIds.value = emptySet()
+        }
+    }
+
+    /** Reset 只重置筛选框到 Select All（我也清空选中，避免误删） */
+    fun resetFilters() {
+        selectedType.value = null
+        selectedDayKey.value = null
+        selectedIds.value = emptySet()
+    }
+}
+
+private fun WorkoutRecord.dayKey(): Int {
+    val cal = Calendar.getInstance().apply { timeInMillis = startTimeMillis }
+    val y = cal.get(Calendar.YEAR)
+    val m = cal.get(Calendar.MONTH) + 1
+    val d = cal.get(Calendar.DAY_OF_MONTH)
+    return y * 10000 + m * 100 + d
 }
